@@ -10,6 +10,10 @@ import {
 import type { Route } from "./+types/root";
 import "./app.css";
 
+export const meta: Route.MetaFunction = () => [
+  { title: "GravMusic" },
+];
+
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
@@ -21,6 +25,7 @@ export const links: Route.LinksFunction = () => [
     rel: "stylesheet",
     href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
   },
+  { rel: "icon", href: "/favicon.png", type: "image/png" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -41,8 +46,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+import { useEffect, useRef } from "react";
+import { useLoaderData } from "react-router";
+import { usePlayerStore } from "./store/usePlayerStore";
+import { PlayerControls } from "./components/PlayerControls";
+import type { Album } from "./types";
+
+export async function clientLoader() {
+  const response = await fetch("/albums.json");
+  if (!response.ok) {
+    throw new Error("Failed to load albums");
+  }
+  const albums: Album[] = await response.json();
+  return { albums };
+}
+
 export default function App() {
-  return <Outlet />;
+  const { albums } = useLoaderData<typeof clientLoader>();
+  const setAlbums = usePlayerStore((state) => state.setAlbums);
+
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (!initialized.current) {
+      setAlbums(albums);
+      initialized.current = true;
+    }
+  }, [albums, setAlbums]);
+
+  return (
+    <div className="flex flex-col h-screen bg-neutral-950 text-white font-sans">
+      <div className="flex-1 overflow-y-auto">
+        <Outlet />
+      </div>
+      <PlayerControls />
+    </div>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
